@@ -32,6 +32,9 @@ interface QrResult {
   success: boolean;
   morador?: Morador;
   message: string;
+  visitante?: string;
+  moradorNome?: string;
+  lote?: string;
 }
 
 export default function PorteiroPage() {
@@ -97,10 +100,31 @@ export default function PorteiroPage() {
     setQrLoading(true);
     setQrResult(null);
 
-    await new Promise(r => setTimeout(r, 600));
+    const codigo = qrInput.trim();
 
-    // Formato esperado: RC-{lote}-{timestamp}
-    const match = qrInput.trim().match(/^RC-(\d+)-\d+$/);
+    // Convite de visitante gerado via Telegram
+    if (codigo.startsWith('VISIT-')) {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/convites/validar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ codigo }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setQrResult({ success: true, message: data.message, visitante: data.visitante, moradorNome: data.morador, lote: data.lote });
+        } else {
+          setQrResult({ success: false, message: data.message });
+        }
+      } catch {
+        setQrResult({ success: false, message: 'Erro ao validar QR Code.' });
+      }
+      setQrLoading(false);
+      return;
+    }
+
+    // Formato legado: RC-{lote}-{timestamp}
+    const match = codigo.match(/^RC-(\d+)-\d+$/);
     if (!match) {
       setQrResult({ success: false, message: 'Código inválido ou formato não reconhecido.' });
       setQrLoading(false);
@@ -115,7 +139,6 @@ export default function PorteiroPage() {
       return;
     }
 
-    // Registra acesso automaticamente
     try {
       await criarAcesso.mutateAsync({
         moradorId: morador.id,
@@ -292,6 +315,11 @@ export default function PorteiroPage() {
                   {qrResult.success ? 'Acesso Autorizado' : 'Acesso Negado'}
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>{qrResult.message}</div>
+                {qrResult.visitante && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-3)' }}>
+                    Visitante: {qrResult.visitante} · Lote {qrResult.lote} ({qrResult.moradorNome})
+                  </div>
+                )}
                 {qrResult.morador && (
                   <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-3)' }}>
                     Lote {qrResult.morador.lote} · {qrResult.morador.telefone}

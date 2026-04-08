@@ -1,5 +1,6 @@
-import { PrismaClient, StatusReserva } from '@prisma/client';
-import { sendMessageRaw, sendMessageWithKeyboard, answerCallbackQuery } from './telegram.service';
+import { PrismaClient, StatusReserva, StatusConvite } from '@prisma/client';
+import QRCode from 'qrcode';
+import { sendMessageRaw, sendMessageWithKeyboard, answerCallbackQuery, sendPhoto } from './telegram.service';
 
 const prisma = new PrismaClient();
 
@@ -10,6 +11,7 @@ type Estado =
   | 'RESERVA_INICIO'
   | 'RESERVA_FIM'
   | 'VISITANTE_NOME'
+  | 'VISITANTE_VALIDADE'
   | 'ENTREGADOR_NOME';
 
 interface Sessao {
@@ -19,6 +21,7 @@ interface Sessao {
   area?: string;
   data?: string;
   inicio?: string;
+  visitanteNome?: string;
 }
 
 const sessoes = new Map<string, Sessao>();
@@ -29,6 +32,20 @@ const MENU_PRINCIPAL = {
     [{ text: '📦 Minhas Encomendas', callback_data: 'menu_encomendas' }],
     [{ text: '🚪 Liberar Visitante', callback_data: 'menu_visitante' }],
     [{ text: '🛵 Liberar Entregador', callback_data: 'menu_entregador' }],
+  ],
+};
+
+const MENU_VALIDADE = {
+  inline_keyboard: [
+    [
+      { text: '📅 Hoje', callback_data: 'validade_hoje' },
+      { text: '📅 Amanhã', callback_data: 'validade_amanha' },
+    ],
+    [
+      { text: '📅 7 dias', callback_data: 'validade_7dias' },
+      { text: '📅 30 dias', callback_data: 'validade_30dias' },
+    ],
+    [{ text: '↩️ Cancelar', callback_data: 'menu_cancelar' }],
   ],
 };
 
@@ -136,7 +153,58 @@ export async function processarUpdate(
 
     if (callbackData === 'menu_visitante') {
       sessao.estado = 'VISITANTE_NOME';
+      sessao.visitanteNome = undefined;
       await sendMessageRaw(chatId, '🚪 Qual o nome do visitante?\n\n_Digite o nome completo:_');
+      return;
+    }
+
+    if (callbackData.startsWith('validade_')) {
+      if (sessao.estado !== 'VISITANTE_VALIDADE' || !sessao.visitanteNome) {
+        await sendMessageWithKeyboard(chatId, `Menu principal, ${nome}:`, MENU_PRINCIPAL);
+        return;
+      }
+
+      const agora = new Date();
+      let validade: Date;
+      let validadeTexto: string;
+
+      if (callbackData === 'validade_hoje') {
+        validade = new Date(agora); validade.setHours(23, 59, 59, 999);
+        validadeTexto = 'hoje';
+      } else if (callbackData === 'validade_amanha') {
+        validade = new Date(agora); validade.setDate(validade.getDate() + 1); validade.setHours(23, 59, 59, 999);
+        validadeTexto = 'amanhã';
+      } else if (callbackData === 'validade_7dias') {
+        validade = new Date(agora); validade.setDate(validade.getDate() + 7); validade.setHours(23, 59, 59, 999);
+        validadeTexto = '7 dias';
+      } else {
+        validade = new Date(agora); validade.setDate(validade.getDate() + 30); validade.setHours(23, 59, 59, 999);
+        validadeTexto = '30 dias';
+      }
+
+      const codigo = `VISIT-${morador.lote}-${Date.now()}`;
+
+      await prisma.conviteVisitante.create({
+        data: {
+          moradorId: morador.id,
+          codigo,
+          nomeVisitante: sessao.visitanteNome,
+          lote: morador.lote,
+          validade,
+          status: StatusConvite.ATIVO,
+        },
+      });
+
+      const qrBuffer = await QRCode.toBuffer(codigo, { type: 'png', width: 400, margin: 2 });
+
+      const validadeFormatada = validade.toLocaleDateString('pt-BR');
+      const caption = `🚪 *QR Code de Acesso*\n\n👤 Visitante: ${sessao.visitanteNome}\n🏠 Lote ${morador.lote}\n📅 Válido até: ${validadeFormatada} _(${validadeTexto})_\n\n_Apresente este QR code na portaria._`;
+
+      sessao.estado = 'IDLE';
+      sessao.visitanteNome = undefined;
+
+      await sendPhoto(chatId, qrBuffer, caption);
+      await sendMessageWithKeyboard(chatId, 'Quer fazer mais alguma coisa?', MENU_PRINCIPAL);
       return;
     }
 
@@ -259,21 +327,12 @@ export async function processarUpdate(
     }
 
     if (sessao.estado === 'VISITANTE_NOME') {
-      await prisma.acesso.create({
-        data: {
-          moradorId: morador.id,
-          nomeVisitante: texto,
-          lote: morador.lote,
-          tipo: 'Manual',
-          status: 'autorizado',
-          motivoVisita: 'Autorizado via Telegram',
-        },
-      });
-      sessao.estado = 'IDLE';
+      sessao.visitanteNome = texto;
+      sessao.estado = 'VISITANTE_VALIDADE';
       await sendMessageWithKeyboard(
         chatId,
-        `✅ *Visitante autorizado!*\n\n👤 ${texto}\n🏠 Lote ${morador.lote}\n\nQuer fazer mais alguma coisa?`,
-        MENU_PRINCIPAL
+        `👤 *${texto}* anotado!\n\n📅 Por quanto tempo o QR code será válido?`,
+        MENU_VALIDADE
       );
       return;
     }

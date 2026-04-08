@@ -31,6 +31,17 @@ export async function sendMessageWithKeyboard(chatId: string, text: string, keyb
   });
 }
 
+export async function sendPhoto(chatId: string, photoBuffer: Buffer, caption: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  const form = new FormData();
+  form.append('chat_id', chatId);
+  form.append('caption', caption);
+  form.append('parse_mode', 'Markdown');
+  form.append('photo', new Blob([photoBuffer], { type: 'image/png' }), 'qrcode.png');
+  await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+}
+
 export async function answerCallbackQuery(callbackQueryId: string): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return;

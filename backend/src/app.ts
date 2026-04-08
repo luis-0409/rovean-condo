@@ -11,6 +11,7 @@ import acessosRoutes from './routes/acessos';
 import dashboardRoutes from './routes/dashboard';
 import webhooksRoutes from './routes/webhooks';
 import telegramRoutes from './routes/telegram';
+import convitesRoutes from './routes/convites';
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -27,6 +28,7 @@ app.use('/api/v1/acessos', acessosRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/webhooks', webhooksRoutes);
 app.use('/api/v1/telegram', telegramRoutes);
+app.use('/api/v1/convites', convitesRoutes);
 
 app.use(errorHandler);
 
