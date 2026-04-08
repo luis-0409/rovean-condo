@@ -92,7 +92,8 @@ export async function processarUpdate(
     return;
   }
 
-  if (!sessoes.has(chatId)) {
+  const isPrimeiraVez = !sessoes.has(chatId);
+  if (isPrimeiraVez) {
     sessoes.set(chatId, { estado: 'IDLE', moradorId: morador.id, moradorLote: morador.lote });
   }
   const sessao = sessoes.get(chatId)!;
@@ -155,8 +156,20 @@ export async function processarUpdate(
 
   // — Mensagens de texto —
   if (texto) {
+    // Primeira mensagem ou /start → boas-vindas + menu
+    if (isPrimeiraVez || texto === '/start' || texto === '/menu') {
+      sessao.estado = 'IDLE';
+      await sendMessageWithKeyboard(
+        chatId,
+        `Olá, ${nome}! 👋\n\nBem-vindo ao sistema do *Rovean Condo*.\nO que você deseja fazer?`,
+        MENU_PRINCIPAL
+      );
+      return;
+    }
+
+    // IDLE sem ser /start → só mostra dica
     if (sessao.estado === 'IDLE') {
-      await sendMessageWithKeyboard(chatId, `Olá, ${nome}! 👋 O que você deseja fazer?`, MENU_PRINCIPAL);
+      await sendMessageRaw(chatId, `Olá, ${nome}! 👋 Envie /start para ver o menu. 🏠`);
       return;
     }
 

@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const update = $input.item.json;\n\nlet chatId, texto, callbackData, callbackQueryId;\n\nif (update.callback_query) {\n  chatId = update.callback_query.from.id.toString();\n  callbackData = update.callback_query.data;\n  callbackQueryId = update.callback_query.id;\n} else if (update.message && update.message.text) {\n  chatId = update.message.from.id.toString();\n  texto = update.message.text;\n} else {\n  // Ignora updates sem texto (fotos, stickers, etc)\n  return [];\n}\n\nreturn [{ json: { chatId, texto, callbackData, callbackQueryId } }];"
+        "jsCode": "const update = $input.item.json;\n\nlet chatId, texto, callbackData, callbackQueryId;\n\n// callback_query (clique em botão)\nif (update.callback_query) {\n  const cq = update.callback_query;\n  chatId = String(cq.from?.id ?? cq.message?.chat?.id);\n  callbackData = cq.data;\n  callbackQueryId = String(cq.id);\n}\n// n8n às vezes desempacota o callback_query diretamente\nelse if (update.data && (update.from || update.message)) {\n  chatId = String(update.from?.id ?? update.message?.chat?.id);\n  callbackData = update.data;\n  callbackQueryId = String(update.id);\n}\n// message normal\nelse if (update.message?.text) {\n  chatId = String(update.message.from?.id ?? update.message.chat?.id);\n  texto = update.message.text;\n}\n// n8n desempacota message diretamente\nelse if (update.text && update.from) {\n  chatId = String(update.from.id);\n  texto = update.text;\n}\nelse {\n  return [];\n}\n\nif (!chatId || chatId === 'undefined') return [];\n\nreturn [{ json: { chatId, texto, callbackData, callbackQueryId } }];"
       },
       "id": "node-02",
       "name": "Extrair Dados",
