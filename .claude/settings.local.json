@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /c/projetos/rovean-condo-v2/frontend/src/app/\\\\\\(app\\\\\\)/**/page.tsx)",
+      "Bash(wc -l /c/projetos/rovean-condo-v2/backend/src/controllers/*.ts)",
+      "Bash(wc -l /c/projetos/rovean-condo-v2/backend/src/routes/*.ts)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

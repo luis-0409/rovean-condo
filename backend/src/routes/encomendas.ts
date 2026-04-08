@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { authMiddleware } from '../middlewares/auth.middleware';
+import * as ctrl from '../controllers/encomendas.controller';
+const router = Router();
+router.use(authMiddleware);
+router.get('/', ctrl.listar);
+router.get('/:id', ctrl.obter);
+router.post('/', ctrl.criar);
+router.patch('/:id/retirar', ctrl.retirar);
+router.get('/:id/mensagem', ctrl.gerarMensagem);
+router.post('/:id/notificar', ctrl.enviarNotificacao);
+export default router;

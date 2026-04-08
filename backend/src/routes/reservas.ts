@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { authMiddleware } from '../middlewares/auth.middleware';
+import * as ctrl from '../controllers/reservas.controller';
+const router = Router();
+router.use(authMiddleware);
+router.get('/disponibilidade', ctrl.disponibilidade);
+router.get('/', ctrl.listar);
+router.post('/', ctrl.criar);
+router.patch('/:id/cancelar', ctrl.cancelar);
+export default router;

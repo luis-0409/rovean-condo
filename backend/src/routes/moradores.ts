@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { authMiddleware, adminOnly } from '../middlewares/auth.middleware';
+import * as ctrl from '../controllers/moradores.controller';
+const router = Router();
+router.use(authMiddleware);
+router.get('/', ctrl.listar);
+router.get('/:id', ctrl.obter);
+router.post('/', adminOnly, ctrl.criar);
+router.put('/:id', adminOnly, ctrl.editar);
+router.delete('/:id', adminOnly, ctrl.remover);
+export default router;

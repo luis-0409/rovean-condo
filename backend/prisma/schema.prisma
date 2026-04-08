@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Perfil {
+  ADMIN
+  PORTEIRO
+}
+
+enum StatusEncomenda {
+  PENDENTE
+  RETIRADA
+}
+
+enum StatusReserva {
+  PENDENTE
+  CONFIRMADA
+  CANCELADA
+}
+
+enum StatusOcorrencia {
+  ABERTA
+  EM_ANDAMENTO
+  RESOLVIDA
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senha     String
+  perfil    Perfil   @default(ADMIN)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Morador {
+  id          Int          @id @default(autoincrement())
+  lote        String       @unique
+  nome        String
+  telefone    String
+  email       String
+  veiculo     String?
+  iniciais    String
+  telegramId  String?
+  ativo       Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  encomendas  Encomenda[]
+  reservas    Reserva[]
+  ocorrencias Ocorrencia[]
+  acessos     Acesso[]
+}
+
+model Encomenda {
+  id             Int             @id @default(autoincrement())
+  moradorId      Int
+  morador        Morador         @relation(fields: [moradorId], references: [id])
+  remetente      String
+  transportadora String
+  tipo           String
+  tamanho        String
+  status         StatusEncomenda @default(PENDENTE)
+  notificado     Boolean         @default(false)
+  dataChegada    DateTime        @default(now())
+  dataRetirada   DateTime?
+  createdAt      DateTime        @default(now())
+}
+
+model Reserva {
+  id            Int           @id @default(autoincrement())
+  moradorId     Int
+  morador       Morador       @relation(fields: [moradorId], references: [id])
+  areaComum     String
+  dataReserva   DateTime
+  horarioInicio String
+  horarioFim    String
+  status        StatusReserva @default(PENDENTE)
+  observacoes   String?
+  createdAt     DateTime      @default(now())
+}
+
+model Ocorrencia {
+  id        Int              @id @default(autoincrement())
+  moradorId Int?
+  morador   Morador?         @relation(fields: [moradorId], references: [id])
+  titulo    String
+  descricao String
+  categoria String
+  urgencia  String
+  status    StatusOcorrencia @default(ABERTA)
+  historico Json             @default("[]")
+  createdAt DateTime         @default(now())
+}
+
+model Acesso {
+  id            Int      @id @default(autoincrement())
+  moradorId     Int?
+  morador       Morador? @relation(fields: [moradorId], references: [id])
+  nomeVisitante String
+  lote          String
+  tipo          String
+  status        String
+  motivoVisita  String?
+  dataEntrada   DateTime @default(now())
+  dataSaida     DateTime?
+}

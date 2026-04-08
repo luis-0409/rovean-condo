@@ -1,0 +1,7 @@
+import { Router } from 'express';
+import { authMiddleware } from '../middlewares/auth.middleware';
+import { resumo } from '../controllers/dashboard.controller';
+const router = Router();
+router.use(authMiddleware);
+router.get('/resumo', resumo);
+export default router;
